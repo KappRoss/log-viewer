@@ -7,7 +7,6 @@ const MAX_LOGS = 1000;
 const LogViewer: React.FC = () => {
     const [logs, setLogs] = useState<string[]>([]);
     const [autoScroll, setAutoScroll] = useState(true);
-    const logEndRef = useRef<HTMLDivElement | null>(null);
     const socketRef = useRef<WebSocket | null>(null);
     const listRef = useRef<any>(null);
 
@@ -24,9 +23,10 @@ const LogViewer: React.FC = () => {
                 if (newLogs.length > MAX_LOGS) {
                     return newLogs.slice(-MAX_LOGS);
                 }
+
                 return newLogs;
             });
-        }, 500);  // logs updates timer
+        }, 100);  // logs updates timer
 
         socketRef.current.onmessage = (event) => {
             handleLog(event.data);
@@ -58,23 +58,38 @@ const LogViewer: React.FC = () => {
 
     return (
         <div>
-            <div style={{ height: "500px", overflow: "auto", backgroundColor: "#f4f4f4" }}>
+            <div style={{
+                height: "500px",
+                overflow: "auto",
+                backgroundColor: "#f4f4f4",
+                display: 'flex',
+                justifyContent: 'center'
+            }}>
                 <List
                     height={500}
                     itemCount={logs.length}
                     itemSize={35}
                     width={800}
                     ref={listRef}
+                    style={{ position: "relative", overflowX: "auto" }}
                 >
                     {({ index, style }) => (
-                        <div style={style} key={index}>
+                        <div
+                            style={{
+                                ...style,
+                                whiteSpace: "nowrap",
+                                overflowX: "auto",
+                                textOverflow: "ellipsis"
+                            }}
+                            key={`${logs[index]}-${index}`}
+                        >
                             {logs[index]}
                         </div>
                     )}
                 </List>
             </div>
             <button onClick={() => setAutoScroll(!autoScroll)}>
-                {autoScroll ? "Off autoscroll" : "On autoscroll"}
+                {`${autoScroll ? 'Off' : 'On'} autoscroll`}
             </button>
         </div>
     );

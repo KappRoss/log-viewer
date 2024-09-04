@@ -1,8 +1,14 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, {useState, useEffect, useRef, useCallback, CSSProperties} from "react";
 import { FixedSizeList as List } from 'react-window';
 import { throttle } from "../../helpers/functions";
 
 const MAX_LOGS = 1000;
+const SCROLL_THRESHOLD = 100;
+const LOG_ITEM_HEIGHT = 35;
+const VIEWER_HEIGHT = 500;
+const VIEWER_WIDTH = 800;
+
+const BACKEND_HOST = process.env.REACT_APP_BACKEND_HOST || 'localhost:4000';
 
 const LogViewer: React.FC = () => {
     const [logs, setLogs] = useState<string[]>([]);
@@ -10,26 +16,28 @@ const LogViewer: React.FC = () => {
     const socketRef = useRef<WebSocket | null>(null);
     const listRef = useRef<any>(null);
 
-    useEffect(() => {
-        const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-        const wsUrl = `${protocol}://localhost:4000/view-log-ws`;
-
-        socketRef.current = new WebSocket(wsUrl);
-
-        // Throttling to exchange interface refresh rates
-        const handleLog = throttle((message: string) => {
+    const handleLog = useCallback(
+        throttle((message: string) => {
             setLogs((prevLogs) => {
                 const newLogs = [...prevLogs, message];
                 if (newLogs.length > MAX_LOGS) {
                     return newLogs.slice(-MAX_LOGS);
                 }
-
                 return newLogs;
             });
-        }, 100);  // logs updates timer
+        }, SCROLL_THRESHOLD), []
+    );
+
+    useEffect(() => {
+        const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+        const wsUrl = `${protocol}://${BACKEND_HOST}/view-log-ws`;
+
+        socketRef.current = new WebSocket(wsUrl);
 
         socketRef.current.onmessage = (event) => {
             handleLog(event.data);
+            // or without throttling
+            // setLogs((prevLogs) => [...prevLogs, event.data]);
         };
 
         socketRef.current.onopen = () => {
@@ -48,7 +56,7 @@ const LogViewer: React.FC = () => {
         return () => {
             socketRef.current?.close();
         };
-    }, []);
+    }, [handleLog]);
 
     useEffect(() => {
         if (autoScroll && listRef.current) {
@@ -58,28 +66,20 @@ const LogViewer: React.FC = () => {
 
     return (
         <div>
-            <div style={{
-                height: "500px",
-                overflow: "auto",
-                backgroundColor: "#f4f4f4",
-                display: 'flex',
-                justifyContent: 'center'
-            }}>
+            <div style={viewerStyle}>
                 <List
-                    height={500}
+                    height={VIEWER_HEIGHT}
                     itemCount={logs.length}
-                    itemSize={35}
-                    width={800}
+                    itemSize={LOG_ITEM_HEIGHT}
+                    width={VIEWER_WIDTH}
                     ref={listRef}
-                    style={{ position: "relative", overflowX: "auto" }}
+                    style={listStyle}
                 >
-                    {({ index, style }) => (
+                    {({index, style}) => (
                         <div
                             style={{
                                 ...style,
-                                whiteSpace: "nowrap",
-                                overflowX: "auto",
-                                textOverflow: "ellipsis"
+                                ...logStyle
                             }}
                             key={`${logs[index]}-${index}`}
                         >
@@ -88,11 +88,52 @@ const LogViewer: React.FC = () => {
                     )}
                 </List>
             </div>
-            <button onClick={() => setAutoScroll(!autoScroll)}>
-                {`${autoScroll ? 'Off' : 'On'} autoscroll`}
-            </button>
+            <div style={buttonContainerStyle}>
+                <button onClick={() => setAutoScroll(!autoScroll)} style={buttonStyle}>
+                    {`${autoScroll ? 'Off' : 'On'} autoscroll`}
+                </button>
+            </div>
         </div>
     );
+};
+
+const containerStyle: CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100vh',
+};
+
+const viewerStyle: CSSProperties = {
+    height: VIEWER_HEIGHT,
+    overflow: "auto",
+    backgroundColor: "#f4f4f4",
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: '20px',
+};
+
+const listStyle: CSSProperties = {
+    position: "relative",
+    overflowX: "auto",
+};
+
+const logStyle: CSSProperties = {
+    whiteSpace: "nowrap",
+    overflowX: "auto",
+    textOverflow: "ellipsis",
+};
+
+const buttonContainerStyle: CSSProperties = {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+};
+
+const buttonStyle: CSSProperties = {
+    padding: '10px 20px',
+    fontSize: '16px',
 };
 
 export default LogViewer;

@@ -8,6 +8,11 @@ to test locally you first need to download the modules using:
 
 ### `yarn`
 
+also need to run the backend
+https://github.com/MindesignGCV/test-log-viewer-backend (see readme.md)
+
+then:
+
 In the project directory, you can run:
 
 ### `yarn start`

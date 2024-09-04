@@ -65,7 +65,7 @@ const LogViewer: React.FC = () => {
     }, [logs, autoScroll]);
 
     return (
-        <div>
+        <div style={containerStyle}>
             <div style={viewerStyle}>
                 <List
                     height={VIEWER_HEIGHT}
